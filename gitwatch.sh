@@ -31,7 +31,6 @@
 #   Will check the availability of both commands using the `which` command
 #   and will abort if either command (or `which`) is not found.
 #
-
 REMOTE=""
 BRANCH=""
 SLEEP_TIME=2
@@ -43,7 +42,7 @@ shelp () { # Print a message about how to use this script
     echo ""
     echo "Usage:"
     echo "${0##*/} [-s <secs>] [-d <fmt>] [-r <remote> [-b <branch>]]"
-    echo "          [-m <msg>] <target>"
+    echo "          [-m <msg>] [-p <pid_file>] <target>"
     echo ""
     echo "Where <target> is the file or folder which should be watched. The target needs"
     echo "to be in a Git repository, or in the case of a folder, it may also be the top"
@@ -73,6 +72,7 @@ shelp () { # Print a message about how to use this script
     echo "                  (unless the <fmt> specified by -d is empty, in which case %d"
     echo "                  is replaced by an empty string); the default message is:"
     echo "                  \"Scripted auto-commit on change (%d) by gitwatch.sh\""
+    echo " -p <pid_file>        creates a pidfile for the current process"
     echo ""
     echo "As indicated, several conditions are only checked once at launch of the"
     echo "script. You can make changes to the repo state and configurations even while"
@@ -100,8 +100,9 @@ do
         d) DATE_FMT=${OPTARG};;
         h) shelp; exit;;
         m) COMMITMSG=${OPTARG};;
-        p|r) REMOTE=${OPTARG};;
+        r) REMOTE=${OPTARG};; 
         s) SLEEP_TIME=${OPTARG};;
+        p) PID_FILE=${OPTARG};;
     esac
 done
 
@@ -119,7 +120,21 @@ is_command () { # Tests for the availability of a command
 # if custom bin names are given for git or inotifywait, use those; otherwise fall back to "git" and "inotifywait"
 if [ -z "$GW_GIT_BIN" ]; then GIT="git"; else GIT="$GW_GIT_BIN"; fi
 if [ -z "$GW_INW_BIN" ]; then INW="inotifywait"; else INW="$GW_INW_BIN"; fi
-
+if [ ! -z "$PID_FILE" ]; then
+    trap "rm ${PID_FILE}; exit" SIGHUP SIGINT SIGTERM
+    # Check to see if pidfile exists and has an valid pid.
+    if [ -f ${PID_FILE} ]; then
+        if kill -0 $(cat ${PID_FILE}); then
+            echo "Another process is already running and using this PID FILE: ${PID_FILE}"
+            exit
+        else  
+         # Write the pid to $PID_FILE with the current pid - even if $PID_FILE exists but has stale pid.
+            echo $$ > $PID_FILE
+        fi
+    else
+        echo $$ > $PID_FILE
+    fi
+fi
 # Check availability of selected binaries and die if not met
 for cmd in "$GIT" "$INW"; do
 	is_command $cmd || { stderr "Error: Required command '$cmd' not found." ; exit 1; }
