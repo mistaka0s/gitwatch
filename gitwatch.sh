@@ -184,7 +184,7 @@ else
 fi
 
 if [ ! -z "$BRANCH" ]; then
-    git_branch=$(git show-ref refs/heads/$(BRANCH))
+    git_branch=$(git show-ref refs/heads/$BRANCH)
     if [ -n "${git_branch}" ]; then
       BRANCH_CMD="checkout ${BRANCH}"
     else
