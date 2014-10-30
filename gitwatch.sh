@@ -183,6 +183,14 @@ else
     PUSH_CMD="" # if not remote is selected, make sure push command is empty
 fi
 
+if [ ! -z "$BRANCH" ]; then
+    git_branch=$(git show-ref refs/heads/$BRANCH)
+    if [ -n "${git_branch}" ]; then
+      BRANCH_CMD="checkout ${BRANCH}"
+    else
+      BRANCH_CMD="checkout -b ${BRANCH}"
+    fi
+fi
 # main program loop: wait for changes and commit them
 while true; do
     $INCOMMAND # wait for changes
@@ -191,6 +199,7 @@ while true; do
         FORMATTED_COMMITMSG="$(sed "s/%d/$(date "$DATE_FMT")/" <<< "$COMMITMSG")" # splice the formatted date-time into the commit message
     fi
     cd $TARGETDIR # CD into right dir
+    $GIT $BRANCH_CMD
     $GIT add $GIT_ADD_ARGS # add file(s) to index
     $GIT commit $GIT_COMMIT_ARGS -m"$FORMATTED_COMMITMSG" # construct commit message and commit
 
